@@ -1,0 +1,7 @@
+import {test,expect} from 'bun:test';
+import {Game} from '../src/game';
+import {applyMatchSettings,needsRoundRestart} from '../src/match-settings';
+import {getBattleground} from '../src/battlegrounds';
+const setup={arena:3,mode:'local',player:'nova',opponent:'volt'};
+test('fullscreen settings apply the selected map and fighters before resetting a round',()=>{const g=new Game({} as HTMLCanvasElement,false);g.fighters[0]!.hp=12;g.time=20;g.winner=1;g.keys.add('mouse0');applyMatchSettings(g,setup);expect(g.arena).toBe(3);expect(g.buildings.length).toBe(getBattleground(3).buildings);expect(g.characterIds).toEqual(['nova','volt']);expect(g.ai).toBe(false);expect(g.fighters[0]!.hp).toBe(100);expect(g.time).toBe(180);expect(g.snapshot().winner).toBe(null);expect(g.keys.size).toBe(0);expect(g.paused).toBe(true);expect(needsRoundRestart(g,setup)).toBe(false);});
+test('editing settings is staged until apply and only gameplay changes require restart',()=>{const g=new Game({} as HTMLCanvasElement,false);g.running=true;g.paused=true;g.fighters[0]!.hp=42;const current={arena:g.arena,mode:'cpu',player:g.characterIds[0]!,opponent:g.characterIds[1]!};expect(needsRoundRestart(g,current)).toBe(false);for(const next of [{...current,arena:4},{...current,player:'ember'},{...current,opponent:'glacier'},{...current,mode:'local'}])expect(needsRoundRestart(g,next)).toBe(true);expect(g.fighters[0]!.hp).toBe(42);expect(g.arena).toBe(current.arena);expect(g.characterIds).toEqual([current.player,current.opponent]);});

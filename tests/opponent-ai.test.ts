@@ -1,0 +1,9 @@
+import {test,expect} from 'bun:test';
+import {opponentVelocity,CPU_MIN_DISTANCE,CPU_MAX_DISTANCE} from '../src/opponent-ai';
+import {ARENA_WIDTH,ARENA_HALF_DEPTH} from '../src/arena';
+import {Game} from '../src/game';
+const player={x:3000,y:-300,z:0};
+test('CPU retreats along all three axes when too close',()=>{for(const delta of [{x:100,y:0,z:0},{x:0,y:0,z:100},{x:0,y:-100,z:0}]){const v=opponentVelocity({x:player.x+delta.x,y:player.y+delta.y,z:player.z+delta.z},player);expect(v.x*delta.x+v.y*delta.y+v.z*delta.z).toBeGreaterThan(0);}});
+test('CPU holds its firing band and approaches only from too far away',()=>{const hold=opponentVelocity({...player,x:player.x+800},player);expect(hold.x).toBe(0);expect(hold.z).toBe(0);const chase=opponentVelocity({...player,x:player.x+1400},player);expect(chase.x).toBeLessThan(0);});
+test('CPU chooses an escape direction at arena edges and when overlapping',()=>{const edge=opponentVelocity({x:ARENA_WIDTH-30,y:-300,z:0},{x:ARENA_WIDTH-100,y:-300,z:0});expect(edge.x).toBe(0);expect(Math.abs(edge.z)).toBeGreaterThan(0);const corner=opponentVelocity({x:ARENA_WIDTH-30,y:-300,z:ARENA_HALF_DEPTH-20},{x:ARENA_WIDTH-100,y:-300,z:ARENA_HALF_DEPTH-100});expect(corner.x).toBeLessThan(0);expect(corner.z).toBe(0);expect(opponentVelocity(player,player).x).toBeGreaterThan(0);});
+test('CPU settles at range after retreating or approaching, without melee damage',()=>{for(const gap of [100,1600]){const g=new Game({} as HTMLCanvasElement,false);g.ai=true;g.running=true;g.sound=false;g.buildings=[];g.blast=()=>{};const p=g.fighters[0]!,cpu=g.fighters[1]!;Object.assign(p,player);Object.assign(cpu,{...player,x:player.x+gap});for(let i=0;i<900;i++){Object.assign(p,{...player,vx:0,vy:0,vz:0});g.update(1/60);}const distance=Math.hypot(cpu.x-p.x,cpu.y-p.y,cpu.z-p.z);expect(distance).toBeGreaterThanOrEqual(CPU_MIN_DISTANCE-25);expect(distance).toBeLessThanOrEqual(CPU_MAX_DISTANCE+25);expect(p.hp).toBe(100);}});
